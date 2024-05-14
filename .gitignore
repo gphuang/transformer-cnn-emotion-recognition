@@ -1,0 +1,5 @@
+*.npy
+logs/
+models/checkpoints/
+notebooks/.ipynb_checkpoints/
+notebooks/

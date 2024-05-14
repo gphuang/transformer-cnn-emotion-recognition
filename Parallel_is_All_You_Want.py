@@ -76,15 +76,15 @@ from IPython.display import Image
 import warnings; warnings.filterwarnings('ignore') #matplot lib complains about librosa
 
 #google colab has an old version of librosa with missing mel spectrogram args (for MFCC); upgrade to current
-!pip install -U librosa
+# !pip install -U librosa
 
 # needed to import dataset from google drive into colab 
-from google.colab import drive
-drive.mount("/content/gdrive")
+#from google.colab import drive
+#drive.mount("/content/gdrive")
 
 # copy RAVDESS dataset from gdrive and unzip
-!cp '/content/gdrive/My Drive/DL/RAVDESS.zip' .
-!unzip -q RAVDESS.zip
+#!cp '/content/gdrive/My Drive/DL/RAVDESS.zip' .
+#!unzip -q RAVDESS.zip
 
 """## Define features
 
@@ -212,7 +212,8 @@ We return the waveforms and the labels (from the file names of the RAVDESS audio
 """
 
 # path to data for glob
-data_path = 'RAVDESS dataset/Actor_*/*.wav'
+data_path = '/scratch/work/huangg5/ravdess_ser/data/audio_speech/Actor_*/*.wav'
+# 'RAVDESS dataset/Actor_*/*.wav'
 
 def load_data():
     # features and labels
@@ -499,15 +500,15 @@ print(f'Features (MFCC matrix) shape: {len(features_train[0])} mel frequency coe
 """### Check Augmented Waveforms:"""
 
 # pick a random waveform, but same one from native and augmented set for easier comparison
-plt.figure(figsize=(15,4))
+"""plt.figure(figsize=(15,4))
 plt.subplot(1, 2, 1)
-librosa.display.waveplot(waveforms[1], sr=sample_rate)
+librosa.display.waveshow(waveforms[1], sr=sample_rate)
 plt.title('Native')
 
 plt.subplot(1, 2, 2)
-librosa.display.waveplot(augmented_waveforms_temp[1], sr=sample_rate)
+librosa.display.waveshow(augmented_waveforms_temp[1], sr=sample_rate)
 plt.title('AWGN Augmented')
-plt.show()
+plt.show()"""
 
 """Looks noisy alright. Noise is clearly visible in otherwise-silent regions of the waveform.
 
@@ -613,7 +614,8 @@ print(f'X_train:{X_train.shape}, y_train:{y_train.shape}')
 print(f'X_valid:{X_valid.shape}, y_valid:{y_valid.shape}')
 print(f'X_test:{X_test.shape}, y_test:{y_test.shape}')
 
-"""# Architecture Overview
+"""
+# Architecture Overview
 <img src="reports/cnn-transformer-final.png">
 As a whole, the CNN architecture of this network is inspired by a combination of the golden standards in image and sequence processing over the last few years.
 
@@ -872,8 +874,9 @@ We can confirm our network's tensor shapes and flow using the excellent torchsum
 
 from torchsummary import summary
 
-# need device to instantiate model
-device = 'cuda'
+# Device configuration
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f'Device: {device}')
 
 # instantiate model for 8 emotions and move to CPU for summary
 model = parallel_all_you_want(len(emotions_dict)).to(device)
@@ -1154,7 +1157,7 @@ def train(optimizer, model, num_epochs, X_train, Y_train, X_valid, Y_valid):
         valid_losses.append(valid_loss)
                   
         # Save checkpoint of the model
-        checkpoint_filename = '/content/gdrive/My Drive/DL/models4/checkpoints/parallel_all_you_wantFINAL-{:03d}.pkl'.format(epoch)
+        checkpoint_filename = './models/checkpoints/parallel_all_you_wantFINAL-{:03d}.pkl'.format(epoch)
         save_checkpoint(optimizer, model, epoch, checkpoint_filename)
         
         # keep track of each epoch's progress
@@ -1184,7 +1187,7 @@ plt.show()
 """
 
 # pick load folder  
-load_folder = '/content/gdrive/My Drive/DL/models/checkpoints'  
+load_folder = './models/checkpoints'  
 
 # pick the epoch to load
 epoch = '429'
@@ -1305,4 +1308,4 @@ If you got this far, I sincerely appreciate your taking the time to do so. Feel 
 - Stanford CNN Tutorial: http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/
 - Stanford's CS231n: https://cs231n.github.io/convolutional-networks/
 - U of T CSC2515, Optimization: https://www.cs.toronto.edu/~hinton/csc2515/notes/lec6tutorial.pdf
-
+"""
