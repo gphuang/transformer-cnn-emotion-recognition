@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=12:59:59
+#SBATCH --time=00:59:59
 #SBATCH --mem=250G
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
@@ -8,11 +8,18 @@
 #SBATCH -n 1
 
 module load mamba
-module load cuda/11.8 
 
 source activate pytorch-env
 
 ## CNN-Transformer
-# /usr/bin/time -v python Parallel_is_All_You_Want.py
-# 81849 Train done, test error with model device location
-/usr/bin/time -v python teset.py
+# /usr/bin/time -v python Parallel*.py
+# 186263 test on epoch 429 67.56
+# 186280 test on epoch 499 68.67%
+/usr/bin/time -v python prepare_data.py
+/usr/bin/time -v python main.py 
+/usr/bin/time -v python test.py
+# 193718 3s 
+
+## speaker-independant 1-fold w.r.t. MMEmoRec
+
+## speaker-independant 5-fold
