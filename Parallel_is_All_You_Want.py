@@ -75,10 +75,11 @@ from IPython.display import Audio
 from IPython.display import Image
 import warnings; warnings.filterwarnings('ignore') #matplot lib complains about librosa
 
-prepare_data = True
-agwn_augment = True
-train_model = False
-
+prepare_data = False
+agwn_augment = False
+train_model = True
+data_fname = './data/features+labels.npy'
+data_fname = './data/spkr-dep/features+labels.npy'
 # RAVDESS native sample rate is 48k
 sample_rate = 48000
 
@@ -239,7 +240,6 @@ def load_data():
         
     return waveforms, emotions, intensities, genders
 
-filename = './data/features+labels.npy'
 if prepare_data:
     # load data 
     # init explicitly to prevent data leakage from past sessions, since load_data() appends
@@ -482,7 +482,7 @@ if prepare_data:
 
     ###### SAVE #########
     # open file in write mode and write data
-    with open(filename, 'wb') as f:
+    with open(data_fname, 'wb') as f:
         np.save(f, X_train)
         np.save(f, X_valid)
         np.save(f, X_test)
@@ -490,14 +490,14 @@ if prepare_data:
         np.save(f, y_valid)
         np.save(f, y_test)
 
-    print(f'Features and labels saved to {filename}')
+    print(f'Features and labels saved to {data_fname}')
 
 ##### LOAD #########
 """# choose load file name 
 filename = 'features+labels.npy'
 """
 # open file in read mode and read data 
-with open(filename, 'rb') as f:
+with open(data_fname, 'rb') as f:
     X_train = np.load(f)
     X_valid = np.load(f)
     X_test = np.load(f)
@@ -792,7 +792,7 @@ save_checkpoint = make_save_checkpoint()
 train_step = make_train_step(model, criterion, optimizer=optimizer)
 
 # instantiate the validation loop function
-validate = make_validate_fnc(model,criterion)
+validate_step = make_validate_fnc(model,criterion)
 
 # instantiate lists to hold scalar performance metrics to plot later
 train_losses=[]
@@ -854,14 +854,14 @@ def train(optimizer, model, num_epochs, X_train, Y_train, X_valid, Y_valid):
         Y_valid_tensor = torch.tensor(Y_valid,dtype=torch.long,device=device)
         
         # calculate validation metrics to keep track of progress; don't need predictions now
-        valid_loss, valid_acc, _ = validate(X_valid_tensor,Y_valid_tensor)
+        valid_loss, valid_acc, _ = validate_step(X_valid_tensor,Y_valid_tensor)
         
         # accumulate scalar performance metrics at each epoch to track and plot later
         train_losses.append(epoch_loss)
         valid_losses.append(valid_loss)
                   
         # Save checkpoint of the model
-        checkpoint_filename = './models/checkpoints/parallel_all_you_wantFINAL-{:03d}.pkl'.format(epoch)
+        checkpoint_filename = f'./models/checkpoints/EPOCH-{epoch}.pkl'
         save_checkpoint(optimizer, model, epoch, checkpoint_filename)
         
         # keep track of each epoch's progress
@@ -887,19 +887,18 @@ load_folder = './models/checkpoints'
 
 # pick the epoch to load
 epoch = '499'
-model_name = f'parallel_all_you_wantFINAL-{epoch}.pkl'
+model_name = f'EPOCH-{epoch}.pkl'
 
 # make full load path
 load_path = os.path.join(load_folder, model_name)
 
-## instantiate empty model and populate with params from binary 
-model = parallel_all_you_want(num_emotions=len(emotions_dict)).to(device) 
+## instantiate model and populate with params from binary 
 load_checkpoint(optimizer, model, load_path, device=device)
 
 print(f'Loaded model from {load_path}')
 
 # reinitialize validation function with model from chosen checkpoint
-validate = make_validate_fnc(model,criterion)
+validate_step = make_validate_fnc(model,criterion)
 
 # Convert 4D test feature set array to tensor and move to GPU
 X_test_tensor = torch.tensor(X_test,device=device).float()
@@ -907,7 +906,7 @@ X_test_tensor = torch.tensor(X_test,device=device).float()
 y_test_tensor = torch.tensor(y_test,dtype=torch.long,device=device)
 
 # Get the model's performance metrics using the validation function we defined
-test_loss, test_acc, predicted_emotions = validate(X_test_tensor,y_test_tensor)
+test_loss, test_acc, predicted_emotions = validate_step(X_test_tensor,y_test_tensor)
 
 print(f'Test accuracy is {test_acc:.2f}%')
 

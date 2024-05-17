@@ -12,7 +12,5 @@ module load mamba
 source activate pytorch-env
 
 ## CNN-Transformer
-python Parallel_is_All_You_Want.py
-# python prepare_data_spkr_dep.py # --agwn_augment
-# python main.py --num_epochs 500 --data_dir ./data/spkr-dep --model_dir ./models/checkpoints/spkr-dep/
-# python test.py --epoch_num 499 --data_dir ./data/spkr-dep --model_dir ./models/checkpoints/spkr-dep/
+python prepare_data_spkr_dep.py  
+python main.py --data_dir ./data/spkr-dep --model_dir ./models/checkpoints/spkr-dep --out_dir ./results/spkr-dep

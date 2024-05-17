@@ -94,8 +94,8 @@ def main(args):
         print('\n\nValidation waveforms:') # augment waveforms of validation set
         features_valid, y_valid = augment_waveforms(X_valid, features_valid, y_valid, multiples, sample_rate=sample_rate)
 
-        print('\n\nTest waveforms:') # augment waveforms of test set 
-        features_test, y_test = augment_waveforms(X_test, features_test, y_test, multiples, sample_rate=sample_rate)
+        # print('\n\nTest waveforms:') # augment waveforms of test set 
+        # features_test, y_test = augment_waveforms(X_test, features_test, y_test, multiples, sample_rate=sample_rate)
 
         # Check new shape of extracted features and data:
         print(f'\n\nNative + Augmented Features set: {len(features_train)+len(features_test)+len(features_valid)} total, {len(features_train)} train, {len(features_valid)} validation, {len(features_test)} test samples')
