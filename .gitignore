@@ -1,5 +1,7 @@
 *.npy
-logs/
+data/*
+results/*
+logs/*
 models/*
 models/checkpoints/
 notebooks/.ipynb_checkpoints/

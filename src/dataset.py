@@ -178,8 +178,7 @@ def awgn_augmentation(waveform, multiples=2, bits=16, snr_min=15, snr_max=30):
     
     return multiple_augmented_waveforms
 
-def augment_waveforms(waveforms, features, emotions, multiples):
-    augmented_waveforms_temp = []
+def augment_waveforms(waveforms, features, emotions, multiples, sample_rate=22000):
 
     # keep track of how many waveforms we've processed so we can add correct emotion label in the same order
     emotion_count = 0
@@ -197,7 +196,7 @@ def augment_waveforms(waveforms, features, emotions, multiples):
         for augmented_waveform in augmented_waveforms:
 
             # Compute MFCCs over augmented waveforms
-            augmented_mfcc = feature_mfcc(augmented_waveform, sample_rate=sample_rate)
+            augmented_mfcc = feature_mfcc(augmented_waveform, sample_rate)
 
             # append the augmented spectrogram to the rest of the native data
             features.append(augmented_mfcc)
@@ -211,8 +210,5 @@ def augment_waveforms(waveforms, features, emotions, multiples):
 
         # keep track of the emotion labels to append in order
         emotion_count += 1
-        
-        # store augmented waveforms to check their shape
-        augmented_waveforms_temp.append(augmented_waveforms)
     
     return features, emotions

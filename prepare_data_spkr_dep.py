@@ -2,18 +2,18 @@ import os, sys, glob
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 
-from src.config import sample_rate, data_path
-from src.config import emotions_dict
-from src.dataset import get_features
-from src.dataset import load_data
+from src.config import sample_rate, data_path, emotions_dict
+from src.dataset import augment_waveforms, get_features, load_data
 
 import argparse
 def parse_args():
 
     parser = argparse.ArgumentParser(description='Prepare data.')
 
-    parser.add_argument('--out_file', type=str, default='./features+labels-spkr-dep.npy',
-                        help=f'Specify the full path to save the features+labels file.')
+    parser.add_argument('--data_dir', type=str, default='./data/spkr-dep',
+                        help=f'Specify the dir to save the features+labels file.')
+    parser.add_argument('--agwn_augment', action='store_true',
+                        help='Specify whether to augment data with Gaussian white noise (default: False).')
     parser.add_argument('--win_len', type=int, default=200,
                         help='Specify the window length for segmentation (default: 200 frames).')
     
@@ -40,7 +40,7 @@ def main(args):
     train_set,valid_set,test_set = [],[],[]
     X_train,X_valid,X_test = [],[],[]
     y_train,y_valid,y_test = [],[],[]
-    
+
     # process each emotion separately to make sure we builf balanced train/valid/test sets 
     for emotion_num in range(len(emotions_dict)):
             
@@ -93,7 +93,6 @@ def main(args):
     valid_set = np.concatenate(valid_set,axis=0)
     test_set = np.concatenate(test_set,axis=0)
 
-
     # check shape of each set
     print(f'X_train:{X_train.shape}, y_train:{y_train.shape}')
     print(f'X_valid:{X_valid.shape}, y_valid:{y_valid.shape}')
@@ -101,7 +100,7 @@ def main(args):
 
     # make sure train, validation, test sets have no overlap/are unique
     # get all unique indices across all sets and how many times each index appears (count)
-    uniques, count = np.unique(np.concatenate([test_indices,valid_indices,train_indices],axis=0), return_counts=True)
+    uniques, count = np.unique(np.concatenate([train_set,test_set,valid_set],axis=0), return_counts=True)
 
     # if each index appears just once, and we have 1440 such unique indices, then all sets are unique
     if sum(count==1) == len(emotions):
@@ -121,6 +120,24 @@ def main(args):
 
     print(f'\n\nFeatures set: {len(features_train)+len(features_test)+len(features_valid)} total, {len(features_train)} train, {len(features_valid)} validation, {len(features_test)} test samples')
     print(f'Features (MFC coefficient matrix) shape: {len(features_train[0])} mel frequency coefficients x {len(features_train[0][1])} time steps')
+
+    if args.agwn_augment:
+        # Augmented data
+        multiples = 2
+
+        print('Train waveforms:') # augment waveforms of training set
+        features_train , y_train = augment_waveforms(X_train, features_train, y_train, multiples, sample_rate=sample_rate)
+
+        print('\n\nValidation waveforms:') # augment waveforms of validation set
+        features_valid, y_valid = augment_waveforms(X_valid, features_valid, y_valid, multiples, sample_rate=sample_rate)
+
+        #print('\n\nTest waveforms:') # augment waveforms of test set 
+        #features_test, y_test = augment_waveforms(X_test, features_test, y_test, multiples, sample_rate=sample_rate)
+
+        # Check new shape of extracted features and data:
+        print(f'\n\nNative + Augmented Features set: {len(features_train)+len(features_test)+len(features_valid)} total, {len(features_train)} train, {len(features_valid)} validation, {len(features_test)} test samples')
+        print(f'{len(y_train)} training sample labels, {len(y_valid)} validation sample labels, {len(y_test)} test sample labels')
+        print(f'Features (MFCC matrix) shape: {len(features_train[0])} mel frequency coefficients x {len(features_train[0][1])} time steps')
 
     # make dummy input channel for CNN input feature tensor
     X_train = np.expand_dims(features_train,1)
@@ -167,7 +184,7 @@ def main(args):
     print(f'X_test scaled:{X_test.shape}, y_test:{y_test.shape}')
 
     # save file 
-    filename = args.out_file # 'features+labels.npy'
+    filename = os.path.join(args.data_dir, 'features+labels.npy')
 
     # open file in write mode and write data
     with open(filename, 'wb') as f:
@@ -182,4 +199,9 @@ def main(args):
 
 if __name__ == '__main__':
     args = parse_args()
+
+    import pathlib
+    p = pathlib.Path(args.data_dir)
+    p.mkdir(parents=True, exist_ok=True)
+
     main(args)
