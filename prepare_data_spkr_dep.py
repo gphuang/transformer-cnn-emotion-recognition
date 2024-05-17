@@ -4,7 +4,7 @@ from sklearn.preprocessing import StandardScaler
 
 from src.config import sample_rate, data_path
 from src.config import emotions_dict
-from src.dataset import get_features, feature_mfcc
+from src.dataset import get_features
 from src.dataset import load_data
 
 import argparse
@@ -12,7 +12,7 @@ def parse_args():
 
     parser = argparse.ArgumentParser(description='Prepare data.')
 
-    parser.add_argument('--out_file', type=str, default='./features+labels-fold0.npy',
+    parser.add_argument('--out_file', type=str, default='./features+labels-spkr-dep.npy',
                         help=f'Specify the full path to save the features+labels file.')
     parser.add_argument('--win_len', type=int, default=200,
                         help='Specify the window length for segmentation (default: 200 frames).')
@@ -35,25 +35,64 @@ def main(args):
     waveforms = np.array(waveforms)
     emotions = np.array(emotions)
 
-    # partion from MMEmotionRecognition and mmerr
-    # see: multimodal-emotion-recognition-ravdess/ravdess_preprocessing/create_annotations.py
-    folds = [[[1, 4, 9, 22],[2, 5, 14, 15, 16],[3, 6, 7, 13, 18, 10, 11, 12, 19, 20, 8, 17, 21, 23, 24]], ]
-    folds = [[[0,1,2,3],[4,5,6,7],[8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]], ]
-    test_ids, valid_ids, train_ids = folds[0]
+    # partion w.r.t. emotion, speaker-dependant 
+    # create storage for train, validation, test sets and their indices
+    train_set,valid_set,test_set = [],[],[]
+    X_train,X_valid,X_test = [],[],[]
+    y_train,y_valid,y_test = [],[],[]
+    
+    # process each emotion separately to make sure we builf balanced train/valid/test sets 
+    for emotion_num in range(len(emotions_dict)):
+            
+        # find all indices of a single unique emotion
+        emotion_indices = [index for index, emotion in enumerate(emotions) if emotion==emotion_num]
 
-    # seed for reproducibility 
-    np.random.seed(69)
-    test_indices = [i for i, actor in enumerate(actors) if int(actor) in test_ids]
-    valid_indices = [i for i, actor in enumerate(actors) if int(actor) in valid_ids]
-    train_indices = [i for i, actor in enumerate(actors) if int(actor) in train_ids]
+        # seed for reproducibility 
+        np.random.seed(69)
+        # shuffle indicies 
+        emotion_indices = np.random.permutation(emotion_indices)
 
-    # create train waveforms/labels sets
-    X_test = waveforms[test_indices]
-    y_test = emotions[test_indices]
-    X_valid = waveforms[valid_indices]
-    y_valid = emotions[valid_indices]
-    X_train = waveforms[train_indices]
-    y_train = emotions[train_indices]
+        # store dim (length) of the emotion list to make indices
+        dim = len(emotion_indices)
+
+        # store indices of training, validation and test sets in 80/10/10 proportion
+        # train set is first 80%
+        train_indices = emotion_indices[:int(0.8*dim)]
+        # validation set is next 10% (between 80% and 90%)
+        valid_indices = emotion_indices[int(0.8*dim):int(0.9*dim)]
+        # test set is last 10% (between 90% - end/100%)
+        test_indices = emotion_indices[int(0.9*dim):]
+
+        # create train waveforms/labels sets
+        X_train.append(waveforms[train_indices,:])
+        y_train.append(np.array([emotion_num]*len(train_indices),dtype=np.int32))
+        # create validation waveforms/labels sets
+        X_valid.append(waveforms[valid_indices,:])
+        y_valid.append(np.array([emotion_num]*len(valid_indices),dtype=np.int32))
+        # create test waveforms/labels sets
+        X_test.append(waveforms[test_indices,:])
+        y_test.append(np.array([emotion_num]*len(test_indices),dtype=np.int32))
+
+        # store indices for each emotion set to verify uniqueness between sets 
+        train_set.append(train_indices)
+        valid_set.append(valid_indices)
+        test_set.append(test_indices)
+
+    # concatenate, in order, all waveforms back into one array 
+    X_train = np.concatenate(X_train,axis=0)
+    X_valid = np.concatenate(X_valid,axis=0)
+    X_test = np.concatenate(X_test,axis=0)
+
+    # concatenate, in order, all emotions back into one array 
+    y_train = np.concatenate(y_train,axis=0)
+    y_valid = np.concatenate(y_valid,axis=0)
+    y_test = np.concatenate(y_test,axis=0)
+
+    # combine and store indices for all emotions' train, validation, test sets to verify uniqueness of sets
+    train_set = np.concatenate(train_set,axis=0)
+    valid_set = np.concatenate(valid_set,axis=0)
+    test_set = np.concatenate(test_set,axis=0)
+
 
     # check shape of each set
     print(f'X_train:{X_train.shape}, y_train:{y_train.shape}')
